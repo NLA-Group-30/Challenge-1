@@ -1,6 +1,9 @@
 build
 bin
 .idea
+.vscode
 *.exe
 *.x
 *.o
+doc/*
+!doc/*.tex
