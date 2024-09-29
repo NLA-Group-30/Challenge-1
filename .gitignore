@@ -1,0 +1,6 @@
+build
+bin
+.idea
+*.exe
+*.x
+*.o
