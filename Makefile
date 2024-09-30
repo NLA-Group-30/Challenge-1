@@ -1,8 +1,15 @@
-main: rgb2greyscale.cpp
-	g++ rgb2greyscale.cpp -o main.x
+CXX_FLAGS=--std=c++17 -Wall -Wextra -Wpedantic -Werror -Wshadow
+DEBUG_FLAGS=-O0 -g
+OPT_FLAGS=-O3 -DNDEBUG -march=native -mtune=native
+
+debug: main.cpp
+	g++ $(DEBUG_FLAGS) $(CXX_FLAGS) main.cpp -o main.x
+
+release: main.cpp
+	g++ $(OPT_FLAGS) $(CXX_FLAGS) main.cpp -o main.x
 
 format:
-	clang-format --style=file -i rgb2greyscale.cpp *.h
+	clang-format --style=file -i main.cpp *.h
 
 report: doc/main.tex
 	latexmk -pdf -interaction=nonstopmode -halt-on-error -Werror doc/main.tex -output-directory=doc
