@@ -9,7 +9,7 @@ release: main.cpp
 	g++ $(OPT_FLAGS) $(CXX_FLAGS) main.cpp -o main.x
 
 format:
-	clang-format --style=file -i main.cpp *.h
+	clang-format --style=file -i *.cpp *.h
 
 report: doc/main.tex
 	latexmk -pdf -interaction=nonstopmode -halt-on-error -Werror doc/main.tex -output-directory=doc
