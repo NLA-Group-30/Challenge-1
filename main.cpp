@@ -83,5 +83,24 @@ int main(int argc, char* argv[]) {
 
 	save_image(noisy, "noisy.png");
 
+	// Task 3: reshape the original matrix in the vector v and the noisy one in
+	// the vector w. Make sure that they both have the shape m*n. Report the
+	// euclidean norm of v.
+	Eigen::VectorXd v =
+		Eigen::Map<Eigen::VectorXd>(original_matrix.data(), height * width);
+	Eigen::VectorXd w =
+		Eigen::Map<Eigen::VectorXd>(noisy.data(), height * width);
+	std::cout << " size of v = " << v.size() << std::endl;
+	std::cout << " size of w = " << w.size() << std::endl;
+	assert(v.size() == original_matrix.cols() * original_matrix.rows());
+	assert(w.size() == original_matrix.cols() * original_matrix.rows());
+
+	double norm{0};
+	for (int i = 0; i < v.size(); i++) {
+		norm += v(i) * v(i);
+	}
+	norm = std::sqrt(norm);
+	std::cout << " norm of v = " << norm << std::endl;
+
 	return 0;
 }
