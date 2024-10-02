@@ -1,5 +1,5 @@
 CXX_FLAGS=--std=c++17 -Wall -Wextra -Wpedantic -Werror -Wshadow
-DEBUG_FLAGS=-O0 -g
+DEBUG_FLAGS=-O0 -g -fsanitize=address,undefined,leak,float-divide-by-zero
 OPT_FLAGS=-O3 -DNDEBUG -march=native -mtune=native
 
 debug: main.cpp
