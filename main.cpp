@@ -286,5 +286,17 @@ int main(int argc, char* argv[]) {
 									 Eigen::RowMajor>>(x.data(), height, width);
 	save_image(solution, "solution.png");
 
+	// Task 10: Write the convolution operation corresponding to the detection
+	// kernel Hlap as a matrix-vector multiplication by a matrix A3 having size
+	// (m*n)x(m*n). Is matrix A3 symmetric?
+	Eigen::Matrix3d Hlap;
+	Hlap << 0.0, -1.0, 0.0, -1.0, 4.0, -1.0, 0.0, -1.0, 0.0;
+	Eigen::SparseMatrix<double, Eigen::RowMajor> A3 =
+		convolution(Hlap, width, height);
+	std::cout << "Number of A3 non-zero entries: " << A3.nonZeros()
+			  << std::endl;
+	std::cout << "A3 is " << (is_symmetric(A3) ? "" : "not ") << "symmetric"
+			  << std::endl;
+
 	return 0;
 }
