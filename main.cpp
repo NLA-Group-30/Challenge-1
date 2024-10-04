@@ -4,6 +4,7 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <unsupported/Eigen/SparseExtra>
 
 // from https://github.com/nothings/stb/tree/master
 #define STB_IMAGE_IMPLEMENTATION
@@ -243,6 +244,39 @@ int main(int argc, char* argv[]) {
 	sharp_image = sharp_image.unaryExpr(
 		[](double val) -> double { return std::clamp(val, 0.0, 255.0); });
 	save_image(sharp_image, "sharp.png");
+
+	// Task 8: Export the Eigen matrix A2 and vector w in the .mtx format. Using
+	// a suitable iterative solver and preconditioner technique available in the
+	// LIS library compute the approximate solution to the linear system A2*x =
+	// w prescribing a tolerance of 1e−9. Report here the iteration count and
+	// the final residual.
+	Eigen::saveMarket(A2, "A2.mtx");
+	std::cout << "Matrix A2 saved to A2.mtx" << std::endl;
+	Eigen::saveMarketVector(w, "w.mtx");
+	std::cout << "Vector w saved to w.mtx" << std::endl;
+
+	// Create Rhs b
+	Eigen::VectorXd e =
+		Eigen::VectorXd::Ones(A2.rows());  // Define exact solution
+	Eigen::VectorXd b = A2 * e;			   // Compute rhs
+	Eigen::VectorXd x(A2.rows());
+
+	// Set parameters for solver
+	const double tolerance = 1.0e-9;
+	const int maxit = 1000;
+
+	// Solving
+	Eigen::ConjugateGradient<Eigen::SparseMatrix<double, Eigen::RowMajor>,
+							 Eigen::Lower | Eigen::Upper>
+		cg;
+	cg.setMaxIterations(maxit);
+	cg.setTolerance(tolerance);
+	cg.compute(A2);
+	x = cg.solve(b);
+	std::cout << " Eigen native CG" << std::endl;
+	std::cout << "#iterations:     " << cg.iterations() << std::endl;
+	std::cout << "relative residual: " << cg.error() << std::endl;
+	std::cout << "effective error: " << (x - e).norm() << std::endl;
 
 	return 0;
 }
