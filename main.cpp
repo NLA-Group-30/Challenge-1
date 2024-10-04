@@ -240,6 +240,8 @@ int main(int argc, char* argv[]) {
 	sharp_image = Eigen::Map<
 		Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
 		sharp_image.data(), height, width);
+	sharp_image = sharp_image.unaryExpr(
+		[](double val) -> double { return std::clamp(val, 0.0, 255.0); });
 	save_image(sharp_image, "sharp.png");
 
 	return 0;
