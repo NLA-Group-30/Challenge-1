@@ -188,12 +188,7 @@ int main(int argc, char* argv[]) {
 	assert(v.size() == original_matrix.cols() * original_matrix.rows());
 	assert(w.size() == original_matrix.cols() * original_matrix.rows());
 
-	double norm{0};
-	for (int i = 0; i < v.size(); i++) {
-		norm += v(i) * v(i);
-	}
-	norm = std::sqrt(norm);
-	std::cout << " norm of v = " << norm << std::endl;
+	std::cout << " norm of v = " << v.norm() << std::endl;
 
 	// Task 4: Write the convolution operation corresponding to the smoothing
 	// kernel Hav2 as a matrix-vector multiplication between a matrix A1 having
