@@ -278,5 +278,13 @@ int main(int argc, char* argv[]) {
 	std::cout << "relative residual: " << cg.error() << std::endl;
 	std::cout << "effective error: " << (x - e).norm() << std::endl;
 
+	// Task 9: Import the previous approximate solution vector x in Eigen and
+	// then convert it into a .png image. Upload the resulting file here.
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+		solution =
+			Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
+									 Eigen::RowMajor>>(x.data(), height, width);
+	save_image(solution, "solution.png");
+
 	return 0;
 }
