@@ -3,6 +3,7 @@
 #include <cassert>
 
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 
 // from https://github.com/nothings/stb/tree/master
 #define STB_IMAGE_IMPLEMENTATION
@@ -101,6 +102,67 @@ int main(int argc, char* argv[]) {
 	}
 	norm = std::sqrt(norm);
 	std::cout << " norm of v = " << norm << std::endl;
+
+	// Task 4: Write the convolution operation corresponding to the smoothing
+	// kernel Hav2 as a matrix-vector multiplication between a matrix A1 having
+	// size (m*n)x(m*n) and the image vector. Report the number of non-zero
+	// entries in A1.
+	Eigen::SparseMatrix<double> mat(v.size(), v.size());
+	std::vector<Eigen::Triplet<double>> triplets;
+	// we the exact number of non-zero values we will need
+	triplets.reserve(9 * (width - 2) * (height - 2) +
+					 6 * ((2 * width - 2) + (2 * height - 2)) + 4 * 4);
+	for (int pixel_index{0}; pixel_index < v.size(); pixel_index++) {
+		const int row = pixel_index / original_matrix.cols();
+		const int col = pixel_index % original_matrix.cols();
+
+		const double x = 1.0 / 9.0;
+
+		const int northwest_index = (row - 1) * width + (col - 1);
+		const int north_index = (row - 1) * width + col;
+		const int northeast_index = (row - 1) * width + (col + 1);
+
+		const int west_index = row * width + (col - 1);
+		const int center_index = row * width + col;
+		const int east_index = row * width + (col + 1);
+
+		const int southwest_index = (row + 1) * width + (col - 1);
+		const int south_index = (row + 1) * width + col;
+		const int southeast_index = (row + 1) * width + (col + 1);
+
+		if (row > 0) {
+			if (col > 0) {
+				triplets.push_back({pixel_index, northwest_index, x});
+			}
+			triplets.push_back({pixel_index, north_index, x});
+			if (col < width - 1) {
+				triplets.push_back({pixel_index, northeast_index, x});
+			}
+		}
+
+		if (col > 0) {
+			triplets.push_back({pixel_index, west_index, x});
+		}
+		triplets.push_back({pixel_index, center_index, x});
+		if (col < width - 1) {
+			triplets.push_back({pixel_index, east_index, x});
+		}
+
+		if (row < height - 1) {
+			if (col > 0) {
+				triplets.push_back({pixel_index, southwest_index, x});
+			}
+			triplets.push_back({pixel_index, south_index, x});
+			if (col < width - 1) {
+				triplets.push_back({pixel_index, southeast_index, x});
+			}
+		}
+	}
+	std::cout << ((9 * (width - 2) * (height - 2) +
+				   6 * ((2 * width - 2) + (2 * height - 2)) + 4 * 4))
+			  << std::endl;
+	std::cout << "Number of non-zero entries: " << triplets.size() << std::endl;
+	mat.setFromTriplets(triplets.begin(), triplets.end());
 
 	return 0;
 }
