@@ -178,8 +178,8 @@ int main(int argc, char* argv[]) {
 	// Task 3: reshape the original matrix in the vector v and the noisy one in
 	// the vector w. Make sure that they both have the shape m*n. Report the
 	// euclidean norm of v.
-	Eigen::RowVectorXd v =
-		Eigen::Map<Eigen::RowVectorXd>(original_matrix.data(), height * width);
+	Eigen::VectorXd v =
+		Eigen::Map<Eigen::VectorXd>(original_matrix.data(), height * width);
 	Eigen::VectorXd w =
 		Eigen::Map<Eigen::VectorXd>(noisy.data(), height * width);
 	std::cout << " size of v = " << v.size() << std::endl;
@@ -204,7 +204,8 @@ int main(int argc, char* argv[]) {
 		one_ninth, one_ninth, one_ninth;
 	Eigen::SparseMatrix<double, Eigen::RowMajor> A1 =
 		convolution(Hav2, width, height);
-	std::cout << "Number of non-zero entries: " << A1.nonZeros() << std::endl;
+	std::cout << "Number of A1 non-zero entries: " << A1.nonZeros()
+			  << std::endl;
 
 	// Task 5: Apply the previous smoothing filter to the noisy image by
 	// performing the matrix-vector multiplication A1*w. Export and upload the
@@ -225,9 +226,21 @@ int main(int argc, char* argv[]) {
 	Hsh2 << 0.0, -3.0, 0.0, -1.0, 9.0, -3.0, 0.0, -1.0, 0.0;
 	Eigen::SparseMatrix<double, Eigen::RowMajor> A2 =
 		convolution(Hsh2, width, height);
-	std::cout << "Number of non-zero entries: " << A2.nonZeros() << std::endl;
+	std::cout << "Number of A2 non-zero entries: " << A2.nonZeros()
+			  << std::endl;
 	std::cout << "A2 is " << (is_symmetric(A2) ? "" : "not ") << "symmetric"
 			  << std::endl;
+
+	// Task 7: Apply the previous sharpening filter to the original image by
+	// performing the matrix-vector multiplication A2*v. Export and upload the
+	// resulting image.
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+		sharp_image = A2 * v;
+	assert(sharp_image.rows() == v.rows() && sharp_image.cols() == v.cols());
+	sharp_image = Eigen::Map<
+		Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+		sharp_image.data(), height, width);
+	save_image(sharp_image, "sharp.png");
 
 	return 0;
 }
