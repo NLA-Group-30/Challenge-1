@@ -56,7 +56,8 @@ int main(int argc, char* argv[]) {
 			  << channels << " channels." << std::endl;
 
 	// Create a Eigen copy of the original matrix
-	Eigen::MatrixXd original_matrix(height, width);
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+		original_matrix(height, width);
 	for (int i = 0; i < height; i++) {
 		for (int j = 0; j < width; j++) {
 			const int index = (i * width + j) * channels;
@@ -107,11 +108,17 @@ int main(int argc, char* argv[]) {
 	// kernel Hav2 as a matrix-vector multiplication between a matrix A1 having
 	// size (m*n)x(m*n) and the image vector. Report the number of non-zero
 	// entries in A1.
-	Eigen::SparseMatrix<double> mat(v.size(), v.size());
+	Eigen::SparseMatrix<double> A1(v.size(), v.size());
 	std::vector<Eigen::Triplet<double>> triplets;
-	// we the exact number of non-zero values we will need
-	triplets.reserve(9 * (width - 2) * (height - 2) +
-					 6 * ((2 * width - 2) + (2 * height - 2)) + 4 * 4);
+	// we know the exact number of non-zero values we will need
+	const size_t expected_entries =
+		// all elements that are not on the border
+		9 * (width - 2) * (height - 2) +
+		// all elements that are on the border but not in a corner
+		6 * (2 * width + 2 * height - 8) +
+		// all 4 corners
+		4 * 4;
+	triplets.reserve(expected_entries);
 	for (int pixel_index{0}; pixel_index < v.size(); pixel_index++) {
 		const int row = pixel_index / original_matrix.cols();
 		const int col = pixel_index % original_matrix.cols();
@@ -132,37 +139,59 @@ int main(int argc, char* argv[]) {
 
 		if (row > 0) {
 			if (col > 0) {
-				triplets.push_back({pixel_index, northwest_index, x});
+				triplets.push_back({northwest_index, pixel_index, x});
 			}
-			triplets.push_back({pixel_index, north_index, x});
+			triplets.push_back({north_index, pixel_index, x});
 			if (col < width - 1) {
-				triplets.push_back({pixel_index, northeast_index, x});
+				triplets.push_back({northeast_index, pixel_index, x});
 			}
 		}
 
 		if (col > 0) {
-			triplets.push_back({pixel_index, west_index, x});
+			triplets.push_back({west_index, pixel_index, x});
 		}
-		triplets.push_back({pixel_index, center_index, x});
+		triplets.push_back({center_index, pixel_index, x});
 		if (col < width - 1) {
-			triplets.push_back({pixel_index, east_index, x});
+			triplets.push_back({east_index, pixel_index, x});
 		}
 
 		if (row < height - 1) {
 			if (col > 0) {
-				triplets.push_back({pixel_index, southwest_index, x});
+				triplets.push_back({southwest_index, pixel_index, x});
 			}
-			triplets.push_back({pixel_index, south_index, x});
+			triplets.push_back({south_index, pixel_index, x});
 			if (col < width - 1) {
-				triplets.push_back({pixel_index, southeast_index, x});
+				triplets.push_back({southeast_index, pixel_index, x});
 			}
 		}
 	}
-	std::cout << ((9 * (width - 2) * (height - 2) +
-				   6 * ((2 * width - 2) + (2 * height - 2)) + 4 * 4))
+	std::cout << "Number of non-zero entries: " << A1.nonZeros() << std::endl;
+	assert(expected_entries == triplets.size());
+	A1.setFromTriplets(triplets.begin(), triplets.end());
+
+	// Task 5: Apply the previous smoothing filter to the noisy image by
+	// performing the matrix-vector multiplication A1*w. Export and upload the
+	// resulting image.
+	const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
+									Eigen::RowMajor> smooth_image = A1 * w;
+	assert(smooth_image.rows() == w.rows() && smooth_image.cols() == w.cols());
+
+	std::cout << " w: " << std::endl;
+	std::cout << w(0) << "; " << w(1) << "; " << w(2) << std::endl;
+	std::cout << w(width) << "; " << w(width + 1) << "; " << w(width + 2)
 			  << std::endl;
-	std::cout << "Number of non-zero entries: " << triplets.size() << std::endl;
-	mat.setFromTriplets(triplets.begin(), triplets.end());
+	std::cout << w(2 * width) << "; " << w(2 * width + 1) << "; "
+			  << w(2 * width + 2) << std::endl;
+
+	std::cout << " A1: " << std::endl;
+	std::cout << A1.coeff(0, 0) << "; " << A1.coeff(0, 1) << "; "
+			  << A1.coeff(0, 2) << std::endl;
+	std::cout << w(width) << "; " << w(width + 1) << "; " << w(width + 2)
+			  << std::endl;
+	std::cout << w(2 * width) << "; " << w(2 * width + 1) << "; "
+			  << w(2 * width + 2) << std::endl;
+
+	save_image(smooth_image, "smooth.png");
 
 	return 0;
 }
