@@ -298,5 +298,18 @@ int main(int argc, char* argv[]) {
 	std::cout << "A3 is " << (is_symmetric(A3) ? "" : "not ") << "symmetric"
 			  << std::endl;
 
+	// Task 11: Apply the previous edge detection filter to the original image
+	// by performing the matrix-vector multiplication A3*v. Export and upload
+	// the resulting image.
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+		edge_image = A3 * v;
+	assert(edge_image.rows() == v.rows() && edge_image.cols() == v.cols());
+	edge_image = Eigen::Map<
+		Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+		edge_image.data(), height, width);
+	edge_image = edge_image.unaryExpr(
+		[](double val) -> double { return std::clamp(val, 0.0, 255.0); });
+	save_image(edge_image, "edge.png");
+
 	return 0;
 }
