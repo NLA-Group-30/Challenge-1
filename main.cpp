@@ -31,6 +31,95 @@ void save_image(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
 	std::cout << "Image saved to " << file_name << std::endl;
 }
 
+Eigen::SparseMatrix<double, Eigen::RowMajor> convolution(
+	const Eigen::Matrix3d& convolution_filter, const int width,
+	const int height) {
+	Eigen::SparseMatrix<double, Eigen::RowMajor> spMat(width * height,
+													   width * height);
+	std::vector<Eigen::Triplet<double>> A1_triplets;
+	// we know the exact number of non-zero values we will need
+	const size_t expected_entries =
+		// all elements that are not on the border
+		9 * (width - 2) * (height - 2) +
+		// all elements that are on the border but not in a corner
+		6 * (2 * width + 2 * height - 8) +
+		// all 4 corners
+		4 * 4;
+	A1_triplets.reserve(expected_entries);
+	for (int pixel_index{0}; pixel_index < width * height; pixel_index++) {
+		const int row = pixel_index / width;
+		const int col = pixel_index % width;
+
+		const int northwest_index = (row - 1) * width + (col - 1);
+		const int north_index = (row - 1) * width + col;
+		const int northeast_index = (row - 1) * width + (col + 1);
+
+		const int west_index = row * width + (col - 1);
+		const int center_index = row * width + col;
+		const int east_index = row * width + (col + 1);
+
+		const int southwest_index = (row + 1) * width + (col - 1);
+		const int south_index = (row + 1) * width + col;
+		const int southeast_index = (row + 1) * width + (col + 1);
+
+		if (row > 0) {
+			if (col > 0) {
+				A1_triplets.push_back(
+					{pixel_index, northwest_index, convolution_filter(0, 0)});
+			}
+			A1_triplets.push_back(
+				{pixel_index, north_index, convolution_filter(0, 1)});
+			if (col < width - 1) {
+				A1_triplets.push_back(
+					{pixel_index, northeast_index, convolution_filter(0, 2)});
+			}
+		}
+
+		if (col > 0) {
+			A1_triplets.push_back(
+				{pixel_index, west_index, convolution_filter(1, 0)});
+		}
+		A1_triplets.push_back(
+			{pixel_index, center_index, convolution_filter(1, 1)});
+		if (col < width - 1) {
+			A1_triplets.push_back(
+				{pixel_index, east_index, convolution_filter(1, 2)});
+		}
+
+		if (row < height - 1) {
+			if (col > 0) {
+				A1_triplets.push_back(
+					{pixel_index, southwest_index, convolution_filter(2, 0)});
+			}
+			A1_triplets.push_back(
+				{pixel_index, south_index, convolution_filter(2, 1)});
+			if (col < width - 1) {
+				A1_triplets.push_back(
+					{pixel_index, southeast_index, convolution_filter(2, 2)});
+			}
+		}
+	}
+	assert(expected_entries == A1_triplets.size());
+	spMat.setFromTriplets(A1_triplets.begin(), A1_triplets.end());
+	return spMat;
+}
+
+bool is_symmetric(const Eigen::SparseMatrix<double, Eigen::RowMajor>& m) {
+	if (m.rows() != m.cols()) {
+		// rectangular matrices cannot be symmetric
+		return false;
+	}
+
+	for (int row = 0; row < m.rows(); row++) {
+		for (int col = 0; col < row - 1; col++) {
+			if (m.coeff(row, col) != m.coeff(col, row)) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 int main(int argc, char* argv[]) {
 	if (argc < 2) {
 		std::cerr << "Usage: " << argv[0] << " <image_path>" << std::endl;
@@ -109,65 +198,12 @@ int main(int argc, char* argv[]) {
 	// kernel Hav2 as a matrix-vector multiplication between a matrix A1 having
 	// size (m*n)x(m*n) and the image vector. Report the number of non-zero
 	// entries in A1.
-	Eigen::SparseMatrix<double, Eigen::RowMajor> A1(v.size(), v.size());
-	std::vector<Eigen::Triplet<double>> triplets;
-	// we know the exact number of non-zero values we will need
-	const size_t expected_entries =
-		// all elements that are not on the border
-		9 * (width - 2) * (height - 2) +
-		// all elements that are on the border but not in a corner
-		6 * (2 * width + 2 * height - 8) +
-		// all 4 corners
-		4 * 4;
-	triplets.reserve(expected_entries);
-	for (int pixel_index{0}; pixel_index < v.size(); pixel_index++) {
-		const int row = pixel_index / width;
-		const int col = pixel_index % width;
-
-		const double x = 1.0 / 9.0;
-
-		const int northwest_index = (row - 1) * width + (col - 1);
-		const int north_index = (row - 1) * width + col;
-		const int northeast_index = (row - 1) * width + (col + 1);
-
-		const int west_index = row * width + (col - 1);
-		const int center_index = row * width + col;
-		const int east_index = row * width + (col + 1);
-
-		const int southwest_index = (row + 1) * width + (col - 1);
-		const int south_index = (row + 1) * width + col;
-		const int southeast_index = (row + 1) * width + (col + 1);
-
-		if (row > 0) {
-			if (col > 0) {
-				triplets.push_back({pixel_index, northwest_index, x});
-			}
-			triplets.push_back({pixel_index, north_index, x});
-			if (col < width - 1) {
-				triplets.push_back({pixel_index, northeast_index, x});
-			}
-		}
-
-		if (col > 0) {
-			triplets.push_back({pixel_index, west_index, x});
-		}
-		triplets.push_back({pixel_index, center_index, x});
-		if (col < width - 1) {
-			triplets.push_back({pixel_index, east_index, x});
-		}
-
-		if (row < height - 1) {
-			if (col > 0) {
-				triplets.push_back({pixel_index, southwest_index, x});
-			}
-			triplets.push_back({pixel_index, south_index, x});
-			if (col < width - 1) {
-				triplets.push_back({pixel_index, southeast_index, x});
-			}
-		}
-	}
-	assert(expected_entries == triplets.size());
-	A1.setFromTriplets(triplets.begin(), triplets.end());
+	Eigen::Matrix3d Hav2;
+	const double one_ninth = 1.0 / 9.0;
+	Hav2 << one_ninth, one_ninth, one_ninth, one_ninth, one_ninth, one_ninth,
+		one_ninth, one_ninth, one_ninth;
+	Eigen::SparseMatrix<double, Eigen::RowMajor> A1 =
+		convolution(Hav2, width, height);
 	std::cout << "Number of non-zero entries: " << A1.nonZeros() << std::endl;
 
 	// Task 5: Apply the previous smoothing filter to the noisy image by
@@ -180,6 +216,18 @@ int main(int argc, char* argv[]) {
 		Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
 		smooth_image.data(), height, width);
 	save_image(smooth_image, "smooth.png");
+
+	// Task 6: Write the convolution operation corresponding to the sharpening
+	// kernel Hsh2 as a matrix-vector multiplication by a matrix A2 having size
+	// (m*n)x(m*n). Report the number of non-zero entries in A2. Is A2
+	// symmetric?
+	Eigen::Matrix3d Hsh2;
+	Hsh2 << 0.0, -3.0, 0.0, -1.0, 9.0, -3.0, 0.0, -1.0, 0.0;
+	Eigen::SparseMatrix<double, Eigen::RowMajor> A2 =
+		convolution(Hsh2, width, height);
+	std::cout << "Number of non-zero entries: " << A2.nonZeros() << std::endl;
+	std::cout << "A2 is " << (is_symmetric(A2) ? "" : "not ") << "symmetric"
+			  << std::endl;
 
 	return 0;
 }
