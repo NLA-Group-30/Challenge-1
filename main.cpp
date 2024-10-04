@@ -69,7 +69,8 @@ int main(int argc, char* argv[]) {
 	stbi_image_free(original_image);
 
 	// Task 2: add a noise in the range [-50;50] to each pixel
-	Eigen::MatrixXd noisy(height, width);
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+		noisy(height, width);
 
 	std::random_device dev;
 	std::mt19937 rnd{dev()};
@@ -89,7 +90,7 @@ int main(int argc, char* argv[]) {
 	// the vector w. Make sure that they both have the shape m*n. Report the
 	// euclidean norm of v.
 	Eigen::RowVectorXd v =
-		Eigen::Map<Eigen::VectorXd>(original_matrix.data(), height * width);
+		Eigen::Map<Eigen::RowVectorXd>(original_matrix.data(), height * width);
 	Eigen::VectorXd w =
 		Eigen::Map<Eigen::VectorXd>(noisy.data(), height * width);
 	std::cout << " size of v = " << v.size() << std::endl;
@@ -169,16 +170,15 @@ int main(int argc, char* argv[]) {
 	A1.setFromTriplets(triplets.begin(), triplets.end());
 	std::cout << "Number of non-zero entries: " << A1.nonZeros() << std::endl;
 
-	std::cout << " A1: " << A1.rows() << " x " << A1.cols() << std::endl;
-	std::cout << " w : " << w.rows() << " x " << w.cols() << std::endl;
-
 	// Task 5: Apply the previous smoothing filter to the noisy image by
 	// performing the matrix-vector multiplication A1*w. Export and upload the
 	// resulting image.
 	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
 		smooth_image = A1 * w;
 	assert(smooth_image.rows() == w.rows() && smooth_image.cols() == w.cols());
-	smooth_image = smooth_image.reshaped(height, width);
+	smooth_image = Eigen::Map<
+		Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+		smooth_image.data(), height, width);
 	save_image(smooth_image, "smooth.png");
 
 	return 0;
