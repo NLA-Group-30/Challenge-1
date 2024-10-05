@@ -1,0 +1,32 @@
+// Task 12-13: Using a suitable iterative solver available in the Eigen library 
+	compute the approximate solution of the linear system (I+A3)y = w, where I denotes 
+	the identity matrix, prescribing a tolerance of 10−10. Report here the iteration count 
+	and the final residual. - Convert the image stored in the vector y into a .png image and upload it.
+
+	Eigen::MatrixXd I = Eigen::MatrixXd::Identity(A3.rows(), A3.cols()); // Matrice identità
+	Eigen::VectorXd y(A3.rows()); // Inizializza il vettore y
+    double tol = 1.e-10; // Tolleranza di convergenza
+    int maxit = 1000; // Numero massimo di iterazioni
+
+	Eigen::ConjugateGradient<Eigen::MatrixXd> cg; // Solver Conjugate Gradient
+    cg.setMaxIterations(maxit);
+    cg.setTolerance(tol);
+    cg.compute(I + A3); // Calcola la matrice (I + A3)
+
+	// Risoluzione del sistema
+    y = cg.solve(w); // Risolve il sistema lineare
+    std::cout << "Eigen native CG" << endl;
+    std::cout << "#iterations: " << cg.iterations() << endl; // Numero di iterazioni
+    std::cout << "relative residual: " << cg.error() << endl; // Residuo relativo
+    std::cout << "effective error: " << (y - w).norm() << endl; // Errore effettivo
+
+	// Task 13: Convertire l'immagine memorizzata nel vettore y in un'immagine .png e caricarla
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> output_image =
+    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(y.data(), height, width);
+
+output_image = output_image.unaryExpr([](double val) -> double { return std::clamp(val, 0.0, 255.0); });
+
+// Salva l'immagine come "task13.png"
+save_image(output_image, "task13.png"); 
+
+
