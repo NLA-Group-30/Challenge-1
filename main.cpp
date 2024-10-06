@@ -1,6 +1,6 @@
+#include <cassert>
 #include <iostream>
 #include <random>
-#include <cassert>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -19,7 +19,7 @@ void save_image(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
 	Eigen::Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic,
 				  Eigen::RowMajor>
 		tmp(m.rows(), m.cols());
-	tmp = m.unaryExpr([](double val) -> unsigned char {
+	tmp = m.unaryExpr([](const double val) -> unsigned char {
 		return static_cast<unsigned char>(val);
 	});
 	// Save the image
@@ -37,71 +37,23 @@ Eigen::SparseMatrix<double, Eigen::RowMajor> convolution(
 	const int height) {
 	Eigen::SparseMatrix<double, Eigen::RowMajor> spMat(width * height,
 													   width * height);
-	std::vector<Eigen::Triplet<double>> A1_triplets;
-	// we know the exact number of non-zero values we will need
-	const size_t expected_entries =
-		// all elements that are not on the border
-		9 * (width - 2) * (height - 2) +
-		// all elements that are on the border but not in a corner
-		6 * (2 * width + 2 * height - 8) +
-		// all 4 corners
-		4 * 4;
-	A1_triplets.reserve(expected_entries);
+	std::vector<Eigen::Triplet<double>> triplets;
 	for (int pixel_index{0}; pixel_index < width * height; pixel_index++) {
 		const int row = pixel_index / width;
 		const int col = pixel_index % width;
 
-		const int northwest_index = (row - 1) * width + (col - 1);
-		const int north_index = (row - 1) * width + col;
-		const int northeast_index = (row - 1) * width + (col + 1);
-
-		const int west_index = row * width + (col - 1);
-		const int center_index = row * width + col;
-		const int east_index = row * width + (col + 1);
-
-		const int southwest_index = (row + 1) * width + (col - 1);
-		const int south_index = (row + 1) * width + col;
-		const int southeast_index = (row + 1) * width + (col + 1);
-
-		if (row > 0) {
-			if (col > 0) {
-				A1_triplets.push_back(
-					{pixel_index, northwest_index, convolution_filter(0, 0)});
-			}
-			A1_triplets.push_back(
-				{pixel_index, north_index, convolution_filter(0, 1)});
-			if (col < width - 1) {
-				A1_triplets.push_back(
-					{pixel_index, northeast_index, convolution_filter(0, 2)});
-			}
-		}
-
-		if (col > 0) {
-			A1_triplets.push_back(
-				{pixel_index, west_index, convolution_filter(1, 0)});
-		}
-		A1_triplets.push_back(
-			{pixel_index, center_index, convolution_filter(1, 1)});
-		if (col < width - 1) {
-			A1_triplets.push_back(
-				{pixel_index, east_index, convolution_filter(1, 2)});
-		}
-
-		if (row < height - 1) {
-			if (col > 0) {
-				A1_triplets.push_back(
-					{pixel_index, southwest_index, convolution_filter(2, 0)});
-			}
-			A1_triplets.push_back(
-				{pixel_index, south_index, convolution_filter(2, 1)});
-			if (col < width - 1) {
-				A1_triplets.push_back(
-					{pixel_index, southeast_index, convolution_filter(2, 2)});
+		for (int dx = -1; dx <= 1; dx++) {
+			for (int dy = -1; dy <= 1; dy++) {
+				const int actual_index = (row + dy) * width + (col + dx);
+				const double value = convolution_filter(dx + 1, dy + 1);
+				if ((row + dy) > 0 && (row + dy) < height - 1 &&
+					(col + dx) > 0 && (col + dx) < width - 1 && value != 0.0) {
+					triplets.push_back({pixel_index, actual_index, value});
+				}
 			}
 		}
 	}
-	assert(expected_entries == A1_triplets.size());
-	spMat.setFromTriplets(A1_triplets.begin(), A1_triplets.end());
+	spMat.setFromTriplets(triplets.begin(), triplets.end());
 	return spMat;
 }
 
@@ -111,14 +63,8 @@ bool is_symmetric(const Eigen::SparseMatrix<double, Eigen::RowMajor>& m) {
 		return false;
 	}
 
-	for (int row = 0; row < m.rows(); row++) {
-		for (int col = 0; col < row - 1; col++) {
-			if (m.coeff(row, col) != m.coeff(col, row)) {
-				return false;
-			}
-		}
-	}
-	return true;
+	const Eigen::SparseMatrix<double, Eigen::RowMajor> mT(m.transpose());
+	return (m - mT).norm() == 0.0;
 }
 
 int main(int argc, char* argv[]) {
@@ -237,7 +183,7 @@ int main(int argc, char* argv[]) {
 		Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
 		sharp_image.data(), height, width);
 	sharp_image = sharp_image.unaryExpr(
-		[](double val) -> double { return std::clamp(val, 0.0, 255.0); });
+		[](const double val) -> double { return std::clamp(val, 0.0, 255.0); });
 	save_image(sharp_image, "sharp.png");
 
 	// Task 8: Export the Eigen matrix A2 and vector w in the .mtx format. Using
@@ -303,7 +249,7 @@ int main(int argc, char* argv[]) {
 		Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
 		edge_image.data(), height, width);
 	edge_image = edge_image.unaryExpr(
-		[](double val) -> double { return std::clamp(val, 0.0, 255.0); });
+		[](const double val) -> double { return std::clamp(val, 0.0, 255.0); });
 	save_image(edge_image, "edge.png");
 
 	return 0;
