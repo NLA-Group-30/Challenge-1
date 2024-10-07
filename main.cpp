@@ -30,23 +30,61 @@ void save_image(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eige
 Eigen::SparseMatrix<double, Eigen::RowMajor> convolution(const Eigen::Matrix3d& convolution_filter, const int width,
 														 const int height) {
 	Eigen::SparseMatrix<double, Eigen::RowMajor> spMat(width * height, width * height);
-	std::vector<Eigen::Triplet<double>> triplets;
+	std::vector<Eigen::Triplet<double>> A1_triplets;
 	for (int pixel_index{0}; pixel_index < width * height; pixel_index++) {
 		const int row = pixel_index / width;
 		const int col = pixel_index % width;
 
-		for (int dx = -1; dx <= 1; dx++) {
-			for (int dy = -1; dy <= 1; dy++) {
-				const int actual_index = (row + dy) * width + (col + dx);
-				const double value = convolution_filter(dx + 1, dy + 1);
-				if ((row + dy) > 0 && (row + dy) < height - 1 && (col + dx) > 0 && (col + dx) < width - 1 &&
-					value != 0.0) {
-					triplets.push_back({pixel_index, actual_index, value});
-				}
+		const int northwest_index = (row - 1) * width + (col - 1);
+		const int north_index = (row - 1) * width + col;
+		const int northeast_index = (row - 1) * width + (col + 1);
+
+		const int west_index = row * width + (col - 1);
+		const int center_index = row * width + col;
+		const int east_index = row * width + (col + 1);
+
+		const int southwest_index = (row + 1) * width + (col - 1);
+		const int south_index = (row + 1) * width + col;
+		const int southeast_index = (row + 1) * width + (col + 1);
+
+		if (row > 0) {
+			if (col > 0) {
+				if (convolution_filter(0, 0) != 0.0)
+					A1_triplets.push_back({pixel_index, northwest_index, convolution_filter(0, 0)});
+			}
+			if (convolution_filter(0, 1) != 0.0)
+				A1_triplets.push_back({pixel_index, north_index, convolution_filter(0, 1)});
+			if (col < width - 1) {
+				if (convolution_filter(0, 2) != 0.0)
+					A1_triplets.push_back({pixel_index, northeast_index, convolution_filter(0, 2)});
+			}
+		}
+
+		if (col > 0) {
+			if (convolution_filter(1, 0) != 0.0)
+				A1_triplets.push_back({pixel_index, west_index, convolution_filter(1, 0)});
+		}
+		if (convolution_filter(1, 1) != 0.0)
+			A1_triplets.push_back({pixel_index, center_index, convolution_filter(1, 1)});
+		if (col < width - 1) {
+			if (convolution_filter(1, 2) != 0.0)
+				A1_triplets.push_back({pixel_index, east_index, convolution_filter(1, 2)});
+		}
+
+		if (row < height - 1) {
+			if (col > 0) {
+				if (convolution_filter(2, 0) != 0.0)
+					A1_triplets.push_back({pixel_index, southwest_index, convolution_filter(2, 0)});
+			}
+			if (convolution_filter(2, 1) != 0.0)
+				A1_triplets.push_back({pixel_index, south_index, convolution_filter(2, 1)});
+			if (col < width - 1) {
+				if (convolution_filter(2, 2) != 0.0)
+					A1_triplets.push_back({pixel_index, southeast_index, convolution_filter(2, 2)});
 			}
 		}
 	}
-	spMat.setFromTriplets(triplets.begin(), triplets.end());
+	spMat.setFromTriplets(A1_triplets.begin(), A1_triplets.end());
 	return spMat;
 }
 
