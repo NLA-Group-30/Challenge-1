@@ -60,10 +60,21 @@ bool is_symmetric(const Eigen::SparseMatrix<double, Eigen::RowMajor>& m) {
 	return (m - mT).norm() == 0.0;
 }
 
+void save_vector(const char* filename, const Eigen::VectorXd& vector) {
+	const long n = vector.size();
+	FILE* out = fopen(filename, "w");
+	fprintf(out, "%%%%MatrixMarket vector coordinate real general\n");
+	fprintf(out, "%ld\n", n);
+	for (int i = 0; i < n; i++) {
+		fprintf(out, "%d %f\n", i + 1, vector(i));
+	}
+	fclose(out);
+}
+
 Eigen::VectorXd read_vector(const char* filename) {
 	std::ifstream input_file(filename);
 	if (!input_file.is_open()) {
-		std::cerr << "Error opening the file." << std::endl;
+		std::cerr << "Error opening the file " << filename << "." << std::endl;
 		std::exit(-1);
 	}
 
@@ -84,7 +95,7 @@ Eigen::VectorXd read_vector(const char* filename) {
 			std::exit(-1);
 		}
 	} else {
-		std::cerr << "Error reading from the file." << std::endl;
+		std::cerr << "Error reading from the file " << filename << "." << std::endl;
 		std::exit(-1);
 	}
 
@@ -105,8 +116,6 @@ Eigen::VectorXd read_vector(const char* filename) {
 			std::cerr << "Index out of bounds: " << index << std::endl;
 			std::exit(-1);
 		}
-
-		// std::cout << index << " -> " << value << std::endl;
 
 		x(index - 1) = value;
 	}
@@ -223,7 +232,7 @@ int main(int argc, char* argv[]) {
 	// the final residual.
 	Eigen::saveMarket(A2, "A2.mtx");
 	std::cout << "Matrix A2 saved to A2.mtx" << std::endl;
-	Eigen::saveMarketVector(w, "w.mtx");
+	save_vector("w.mtx", w);
 	std::cout << "Vector w saved to w.mtx" << std::endl;
 
 	system("./task_8.x A2.mtx w.mtx sol.txt hist.txt");
@@ -272,7 +281,6 @@ int main(int argc, char* argv[]) {
 	std::cout << "Eigen native CG" << std::endl;
 	std::cout << "#iterations: " << cg.iterations() << std::endl;
 	std::cout << "relative residual: " << cg.error() << std::endl;
-	std::cout << "effective error: " << (y - w).norm() << std::endl;
 
 	// Task 13: Convertire l'immagine memorizzata nel vettore y in un'immagine .png e caricarla.
 	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> output_image =
